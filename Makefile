@@ -4,20 +4,17 @@ OBJ = $(SRC:.cpp=.o)
 
 OUT = emergency-restart
 
-CFLAGS ?= -O2
-CFLAGS += -pthread -std=gnu++0x
-
-CC = g++
+CXXFLAGS = -O2 -pthread -std=c++11
 
 .SUFFIXES: .cpp
 
 default: $(OUT)
 
 .cpp.o:
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(OUT): $(OBJ)
-	$(CC) -o $@ $(OBJ) $(CFLAGS)
+	$(CXX) -o $@ $(OBJ) $(CXXFLAGS)
 
 clean:
 	rm -f $(OBJ) $(OUT)
