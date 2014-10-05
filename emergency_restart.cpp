@@ -5,6 +5,7 @@
 #include <vector>
 #include <thread>
 #include <syslog.h>
+#include <sys/stat.h>
 
 using namespace std;
 
@@ -54,15 +55,15 @@ void find_device()
 	}
 	else
 	{
-		syslog(LOG_ERR, "Unable to open file /proc/bus/input/devices -> exit");
+		syslog(LOG_ERR, "unable to open file /proc/bus/input/devices -> exit");
 		exit(EXIT_FAILURE);
 	}
 	if (devices.size() == 0)
 	{
-		syslog(LOG_ERR, "No devices found");
+		syslog(LOG_ERR, "no devices found");
 		exit(EXIT_FAILURE);
 	}
-	syslog(LOG_INFO, "Using devices: ");
+	syslog(LOG_INFO, "using devices: ");
 	for (unsigned i = 0; i < devices.size(); i++)
 		syslog(LOG_INFO, "%s", ("  " + devices[i]).c_str());
 }
@@ -95,12 +96,12 @@ void readDevice(string device)
 					{
 						if (ev.code == keyE2Restart)
 						{
-							syslog(LOG_INFO, "Restarting E2 ...");
+							syslog(LOG_INFO, "restarting E2 ...");
 							system("init 4; sleep 2; init 3");
 						}
 						else
 						{
-							syslog(LOG_INFO, "Restarting box ...");
+							syslog(LOG_INFO, "restarting box ...");
 							system("shutdown -r now");
 						}
 					}
@@ -116,8 +117,53 @@ void readDevice(string device)
 	}
 	else
 	{
-		syslog(LOG_ERR, "%s", ("Cannot open device " + device).c_str());
+		syslog(LOG_ERR, "%s", ("cannot open device " + device).c_str());
 	}
+}
+
+void daemonize()
+{
+	syslog(LOG_INFO, "start daemonize");
+
+	pid_t pid;
+	pid = fork();
+	if (pid < 0)
+	{
+		syslog(LOG_ERR, "error fork failed");
+		exit(EXIT_FAILURE);
+	}
+	else if (pid > 0)
+	{
+		syslog(LOG_INFO, "stop parent");
+		exit(EXIT_SUCCESS);
+	}
+
+	if (setsid() < 0)
+	{
+		syslog(LOG_ERR, "setsid failed");
+		exit(EXIT_FAILURE);
+	}
+
+	pid = fork();
+	if (pid < 0)
+	{
+		syslog(LOG_ERR, "error fork failed");
+		exit(EXIT_FAILURE);
+	}
+	else if (pid > 0)
+	{
+		syslog(LOG_INFO, "stop child");
+		exit(EXIT_SUCCESS);
+	}
+
+	chdir("/");
+	umask(0);
+
+	// close all open files
+	for (int i = sysconf(_SC_OPEN_MAX); i > 0; i--)
+		close(i);
+
+	syslog(LOG_INFO, "daemonize successful");
 }
 
 int main()
@@ -127,13 +173,13 @@ int main()
 
 	find_device();
 
+	daemonize();
+
 	vector<std::thread> threads;
-
-
 	for (unsigned i = 0; i < devices.size(); i++)
 	{
 		threads.push_back(thread(readDevice, devices[i]));
-		syslog(LOG_INFO, "%s", ("Starting thread for " + devices[i]).c_str());
+		syslog(LOG_INFO, "%s", ("starting thread for " + devices[i]).c_str());
 	}
 
 	for(auto& thread : threads)
