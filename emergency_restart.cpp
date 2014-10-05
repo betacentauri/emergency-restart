@@ -70,6 +70,7 @@ void find_device()
 
 void readDevice(string device)
 {
+	int ret;
 	struct input_event ev;
 	int key3Times = KEY_OK;
 	int keyE2Restart = KEY_MENU;
@@ -97,12 +98,12 @@ void readDevice(string device)
 						if (ev.code == keyE2Restart)
 						{
 							syslog(LOG_INFO, "restarting E2 ...");
-							system("init 4; sleep 2; init 3");
+							ret = system("init 4; sleep 2; init 3");
 						}
 						else
 						{
 							syslog(LOG_INFO, "restarting box ...");
-							system("shutdown -r now");
+							ret = system("shutdown -r now");
 						}
 					}
 					keyVector.clear();
@@ -125,6 +126,7 @@ void daemonize()
 {
 	syslog(LOG_INFO, "start daemonize");
 
+	int ret;
 	pid_t pid;
 	pid = fork();
 	if (pid < 0)
@@ -156,7 +158,7 @@ void daemonize()
 		exit(EXIT_SUCCESS);
 	}
 
-	chdir("/");
+	ret = chdir("/");
 	umask(0);
 
 	// close all open files
