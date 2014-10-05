@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <vector>
 #include <thread>
+#include <syslog.h>
 
 using namespace std;
 
@@ -53,12 +54,17 @@ void find_device()
 	}
 	else
 	{
-		cout << "Unable to open file /proc/bus/input/devices -> exit";
-		exit(0);
+		syslog(LOG_ERR, "Unable to open file /proc/bus/input/devices -> exit");
+		exit(EXIT_FAILURE);
 	}
-	cout << "Using devices: " << endl;
+	if (devices.size() == 0)
+	{
+		syslog(LOG_ERR, "No devices found");
+		exit(EXIT_FAILURE);
+	}
+	syslog(LOG_INFO, "Using devices: ");
 	for (unsigned i = 0; i < devices.size(); i++)
-		cout << "  " << devices[i] << endl;
+		syslog(LOG_INFO, "%s", ("  " + devices[i]).c_str());
 }
 
 void readDevice(string device)
@@ -89,12 +95,12 @@ void readDevice(string device)
 					{
 						if (ev.code == keyE2Restart)
 						{
-							cout << "Restarting E2 ..." << endl;
+							syslog(LOG_INFO, "Restarting E2 ...");
 							system("init 4; sleep 2; init 3");
 						}
 						else
 						{
-							cout << "Restarting box ..." << endl;
+							syslog(LOG_INFO, "Restarting box ...");
 							system("shutdown -r now");
 						}
 					}
@@ -110,23 +116,30 @@ void readDevice(string device)
 	}
 	else
 	{
-		cout << "Cannot open device " << device << endl;
+		syslog(LOG_ERR, "%s", ("Cannot open device " + device).c_str());
 	}
 }
 
 int main()
 {
-	vector<std::thread> threads;
+	// Open log
+	openlog("emergency-restart", LOG_PID | LOG_CONS | LOG_NDELAY, LOG_USER);
 
 	find_device();
+
+	vector<std::thread> threads;
+
+
 	for (unsigned i = 0; i < devices.size(); i++)
 	{
 		threads.push_back(thread(readDevice, devices[i]));
-		cout << "Starting thread for " << devices[i] << endl;
+		syslog(LOG_INFO, "%s", ("Starting thread for " + devices[i]).c_str());
 	}
 
 	for(auto& thread : threads)
 	{
 		thread.join();
 	}
+
+	closelog();
 }
